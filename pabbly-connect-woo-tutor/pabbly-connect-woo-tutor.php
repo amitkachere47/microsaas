@@ -19,8 +19,14 @@ if ( ! defined( 'WPINC' ) ) {
 // Include the admin class.
 require_once plugin_dir_path( __FILE__ ) . 'admin/class-pcwt-admin.php';
 
+// Include the webhook handler base class.
+require_once plugin_dir_path( __FILE__ ) . 'includes/class-pcwt-webhook-handler.php';
+
 // Include the Tutor LMS integration class.
 require_once plugin_dir_path( __FILE__ ) . 'includes/class-pcwt-tutor-lms.php';
 
 // Include the WooCommerce integration class.
 require_once plugin_dir_path( __FILE__ ) . 'includes/class-pcwt-woocommerce.php';
+
+// Include the WordPress Core integration class.
+require_once plugin_dir_path( __FILE__ ) . 'includes/class-pcwt-wordpress-core.php';

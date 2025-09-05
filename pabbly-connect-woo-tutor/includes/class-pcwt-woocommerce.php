@@ -1,52 +1,69 @@
 <?php
 
-class PCWT_WooCommerce {
+class PCWT_WooCommerce extends PCWT_Webhook_Handler {
 
     public function __construct() {
         add_action( 'woocommerce_order_status_changed', array( $this, 'order_status_changed' ), 10, 4 );
+        add_action( 'woocommerce_new_order', array( $this, 'new_order' ), 10, 1 );
+        add_action( 'save_post_product', array( $this, 'new_product' ), 10, 3 );
+        add_action( 'user_register', array( $this, 'new_customer' ), 10, 1 );
+        add_action( 'woocommerce_add_to_cart', array( $this, 'add_to_cart' ), 10, 6 );
     }
 
     public function order_status_changed( $order_id, $old_status, $new_status, $order ) {
-        $active_webhooks = get_option( 'pcwt_active_webhooks' );
-        if ( ! isset( $active_webhooks['woocommerce_order_status_changed'] ) || $active_webhooks['woocommerce_order_status_changed'] != 1 ) {
-            return;
-        }
-
-        $webhook_url = get_option( 'pcwt_webhook_url' );
-        if ( empty( $webhook_url ) ) {
-            return;
-        }
-
-        $data = array(
-            'event'             => 'woocommerce_order_status_changed',
-            'order_id'          => $order_id,
-            'old_status'        => $old_status,
-            'new_status'        => $new_status,
-            'customer_id'       => $order->get_customer_id(),
-            'customer_email'    => $order->get_billing_email(),
-            'total'             => $order->get_total(),
-            'currency'          => $order->get_currency(),
-            'payment_method'    => $order->get_payment_method_title(),
-        );
-
-        $this->send_webhook( $webhook_url, $data );
+        $this->trigger_webhook( 'woocommerce_order_status_changed', array(
+            'order_id'       => $order_id,
+            'old_status'     => $old_status,
+            'new_status'     => $new_status,
+            'customer_id'    => $order->get_customer_id(),
+            'customer_email' => $order->get_billing_email(),
+            'total'          => $order->get_total(),
+        ) );
     }
 
-    private function send_webhook( $webhook_url, $data ) {
-        $args = array(
-            'body'        => json_encode( $data ),
-            'headers'     => array(
-                'Content-Type' => 'application/json',
-            ),
-            'timeout'     => 60,
-            'redirection' => 5,
-            'blocking'    => true,
-            'httpversion' => '1.0',
-            'sslverify'   => false,
-            'data_format' => 'body',
-        );
+    public function new_order( $order_id ) {
+        $order = wc_get_order( $order_id );
+        $this->trigger_webhook( 'woocommerce_new_order', array(
+            'order_id'       => $order_id,
+            'status'         => $order->get_status(),
+            'customer_id'    => $order->get_customer_id(),
+            'customer_email' => $order->get_billing_email(),
+            'total'          => $order->get_total(),
+        ) );
+    }
 
-        wp_remote_post( $webhook_url, $args );
+    public function new_product( $post_id, $post, $update ) {
+        if ( $update ) {
+            return;
+        }
+        $product = wc_get_product( $post_id );
+        $this->trigger_webhook( 'woocommerce_new_product', array(
+            'product_id' => $post_id,
+            'name'       => $product->get_name(),
+            'sku'        => $product->get_sku(),
+            'price'      => $product->get_price(),
+        ) );
+    }
+
+    public function new_customer( $user_id ) {
+        $user = get_userdata( $user_id );
+        if ( in_array( 'customer', (array) $user->roles ) ) {
+            $this->trigger_webhook( 'woocommerce_new_customer', array(
+                'user_id'    => $user_id,
+                'user_email' => $user->user_email,
+                'user_name'  => $user->display_name,
+            ) );
+        }
+    }
+
+    public function add_to_cart( $cart_item_key, $product_id, $quantity, $variation_id, $variation, $cart_item_data ) {
+        $product = wc_get_product( $product_id );
+        $this->trigger_webhook( 'woocommerce_add_to_cart', array(
+            'product_id'   => $product_id,
+            'product_name' => $product->get_name(),
+            'quantity'     => $quantity,
+            'user_id'      => get_current_user_id(),
+        ) );
     }
 }
 

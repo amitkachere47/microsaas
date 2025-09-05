@@ -12,8 +12,8 @@ class PCWT_Admin {
         if ( 'pabbly-connect_page_pabbly-connect-logs' !== $hook && 'toplevel_page_pabbly-connect-settings' !== $hook && 'pabbly-connect_page_pabbly-connect-settings' !== $hook) {
             return;
         }
-        wp_enqueue_style( 'pcwt-admin-css', plugin_dir_url( __FILE__ ) . 'css/admin.css', array(), '1.1.2' );
-        wp_enqueue_script( 'pcwt-admin-js', plugin_dir_url( __FILE__ ) . 'js/admin.js', array( 'jquery' ), '1.1.2', true );
+        wp_enqueue_style( 'pcwt-admin-css', plugin_dir_url( __FILE__ ) . 'css/admin.css', array(), '1.1.4' );
+        wp_enqueue_script( 'pcwt-admin-js', plugin_dir_url( __FILE__ ) . 'js/admin.js', array( 'jquery' ), '1.1.4', true );
     }
 
     public function add_plugin_page() {
@@ -72,6 +72,10 @@ class PCWT_Admin {
             add_settings_section( 'tutor_lms_triggers', '<button type="button" class="button-link section-toggle">Tutor LMS Triggers</button>', null, 'pabbly-connect-settings' );
             add_settings_field( 'tutor_lms_courses', 'Filter by Course', array( $this, 'tutor_lms_courses_callback' ), 'pabbly-connect-settings', 'tutor_lms_triggers' );
             add_settings_field( 'tutor_after_enroll', 'Student Enrolls in Course', array( $this, 'checkbox_callback' ), 'pabbly-connect-settings', 'tutor_lms_triggers', array( 'id' => 'tutor_after_enroll' ) );
+            add_settings_field( 'tutor_lesson_completed', 'Lesson Completed', array( $this, 'checkbox_callback' ), 'pabbly-connect-settings', 'tutor_lms_triggers', array( 'id' => 'tutor_lesson_completed' ) );
+            add_settings_field( 'tutor_quiz_passed', 'Quiz Passed', array( $this, 'checkbox_callback' ), 'pabbly-connect-settings', 'tutor_lms_triggers', array( 'id' => 'tutor_quiz_passed' ) );
+            add_settings_field( 'tutor_assignment_submitted', 'Assignment Submitted', array( $this, 'checkbox_callback' ), 'pabbly-connect-settings', 'tutor_lms_triggers', array( 'id' => 'tutor_assignment_submitted' ) );
+            add_settings_field( 'tutor_question_posted', 'Question Posted', array( $this, 'checkbox_callback' ), 'pabbly-connect-settings', 'tutor_lms_triggers', array( 'id' => 'tutor_question_posted' ) );
         }
     }
 

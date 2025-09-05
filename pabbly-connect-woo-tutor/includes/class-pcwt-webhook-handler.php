@@ -13,14 +13,13 @@ abstract class PCWT_Webhook_Handler {
             return;
         }
 
-        $data = array_merge( array('event' => $event), $data );
-
-        $this->send_webhook( $webhook_url, $data );
+        $this->send_webhook( $webhook_url, $event, $data );
     }
 
-    private function send_webhook( $webhook_url, $data ) {
+    private function send_webhook( $webhook_url, $event, $data ) {
+        $payload = array_merge( array('event' => $event), $data );
         $args = array(
-            'body'        => json_encode( $data ),
+            'body'        => json_encode( $payload ),
             'headers'     => array( 'Content-Type' => 'application/json' ),
             'timeout'     => 60,
             'redirection' => 5,
@@ -29,6 +28,30 @@ abstract class PCWT_Webhook_Handler {
             'sslverify'   => false,
             'data_format' => 'body',
         );
-        wp_remote_post( $webhook_url, $args );
+
+        $response = wp_remote_post( $webhook_url, $args );
+
+        $this->log_request( $event, $payload, $response );
+    }
+
+    private function log_request( $event, $request_data, $response ) {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'pcwt_webhook_logs';
+
+        $status = 'failed';
+        if ( ! is_wp_error( $response ) && in_array( wp_remote_retrieve_response_code( $response ), array( 200, 201, 204 ) ) ) {
+            $status = 'success';
+        }
+
+        $wpdb->insert(
+            $table_name,
+            array(
+                'event'      => $event,
+                'status'     => $status,
+                'request'    => json_encode( $request_data ),
+                'response'   => is_wp_error( $response ) ? $response->get_error_message() : wp_remote_retrieve_body( $response ),
+                'created_at' => current_time( 'mysql' ),
+            )
+        );
     }
 }

@@ -8,6 +8,33 @@ define( 'PLUGIN_ROOT', dirname( __DIR__ ) . '/' );
 $mock_options = array();
 $mock_actions = array();
 
+if ( ! class_exists( 'WP_List_Table' ) ) {
+    class WP_List_Table {
+        public function __construct( $args = array() ) {}
+        public function prepare_items() {}
+        public function display() {}
+        public function get_columns() { return array(); }
+        public function get_sortable_columns() { return array(); }
+        public function column_default( $item, $column_name ) {}
+        public function set_pagination_args( $args ) {}
+        public function get_pagenum() { return 1; }
+    }
+}
+
+if ( ! class_exists( 'wpdb' ) ) {
+    class wpdb {
+        public $prefix = 'wp_';
+        public function get_charset_collate() { return ''; }
+        public function get_var( $query ) { return 0; }
+        public function get_results( $query, $output ) { return array(); }
+        public function insert( $table, $data ) {}
+        public function prepare( $query, ...$args ) { return vsprintf( $query, $args ); }
+    }
+    global $wpdb;
+    $wpdb = new wpdb();
+}
+
+
 function add_action( $hook, $callback, $priority = 10, $accepted_args = 1 ) {
     global $mock_actions;
     $mock_actions[$hook][] = $callback;
@@ -54,10 +81,11 @@ function get_post( $post_id ) {
 }
 function current_time( $type ) { return date( 'Y-m-d H:i:s' ); }
 function wp_remote_post( $url, $args ) {
-    echo "--- Webhook Sent ---\n";
-    echo "URL: $url\n";
-    echo "Data: " . $args['body'] . "\n";
-    echo "--------------------\n";
+    // echo "--- Webhook Sent ---\n";
+    // echo "URL: $url\n";
+    // echo "Data: " . $args['body'] . "\n";
+    // echo "--------------------\n";
+    return array('response' => array('code' => 200), 'body' => 'Success');
 }
 function wc_get_order( $order_id ) { return new WC_Order(); }
 function wc_get_product( $product_id ) { return new WC_Product(); }
@@ -68,11 +96,31 @@ function get_comment( $comment_id ) {
     $comment->comment_post_ID = 123;
     return $comment;
 }
+function get_posts( $args ) { return array(); }
 function get_post_meta( $post_id, $key, $single ) { return 123; }
 function get_the_title( $post_id ) { return 'Test Title'; }
 function wp_enqueue_style( ...$args ) {}
 function wp_enqueue_script( ...$args ) {}
 function sanitize_key( $key ) { return $key; }
+function register_activation_hook( $file, $callback ) {}
+function selected( $selected, $current = true, $echo = true ) {
+    if ( (string) $selected === (string) $current ) {
+        $result = " selected='selected'";
+    } else {
+        $result = '';
+    }
+    if ( $echo ) {
+        echo $result;
+    }
+    return $result;
+}
+function add_menu_page( ...$args ) {}
+function add_submenu_page( ...$args ) {}
+function is_wp_error( $thing ) { return false; }
+function wp_remote_retrieve_response_code( $response ) { return 200; }
+function wp_remote_retrieve_body( $response ) { return 'Success'; }
+function dbDelta( $sql ) {}
+
 
 // Load the plugin
 require_once ABSPATH . 'pabbly-connect-woo-tutor.php';

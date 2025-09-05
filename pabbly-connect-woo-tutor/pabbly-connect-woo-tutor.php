@@ -3,7 +3,7 @@
  * Plugin Name: Pabbly Connect for Tutor LMS & WooCommerce
  * Plugin URI: https://example.com/
  * Description: Connects Tutor LMS Pro and WooCommerce to Pabbly Connect using webhooks.
- * Version: 1.0.0
+ * Version: 1.1.0
  * Author: Jules
  * Author URI: https://example.com/
  * License: GPL-2.0+
@@ -15,6 +15,14 @@
 if ( ! defined( 'WPINC' ) ) {
     die;
 }
+
+define( 'PCWT_FILE', __FILE__ );
+
+// Include the installer class.
+require_once plugin_dir_path( __FILE__ ) . 'includes/class-pcwt-installer.php';
+
+// Include the admin class dependencies.
+require_once plugin_dir_path( __FILE__ ) . 'admin/class-pcwt-log-list-table.php';
 
 // Include the admin class.
 require_once plugin_dir_path( __FILE__ ) . 'admin/class-pcwt-admin.php';

@@ -29,3 +29,13 @@
 .collapsed + .form-table {
     display: none;
 }
+
+.status-success {
+    color: #28a745;
+    font-weight: bold;
+}
+
+.status-failed {
+    color: #dc3545;
+    font-weight: bold;
+}

@@ -3,7 +3,7 @@
  * Plugin Name: Pabbly Connect for Tutor LMS & WooCommerce
  * Plugin URI: https://example.com/
  * Description: Connects Tutor LMS Pro and WooCommerce to Pabbly Connect using webhooks.
- * Version: 1.1.0
+ * Version: 1.1.3
  * Author: Jules
  * Author URI: https://example.com/
  * License: GPL-2.0+
@@ -18,23 +18,90 @@ if ( ! defined( 'WPINC' ) ) {
 
 define( 'PCWT_FILE', __FILE__ );
 
-// Include the installer class.
-require_once plugin_dir_path( __FILE__ ) . 'includes/class-pcwt-installer.php';
+final class PCWT_Connector {
 
-// Include the admin class dependencies.
-require_once plugin_dir_path( __FILE__ ) . 'admin/class-pcwt-log-list-table.php';
+    private static $_instance = null;
 
-// Include the admin class.
-require_once plugin_dir_path( __FILE__ ) . 'admin/class-pcwt-admin.php';
+    public static function instance() {
+        if ( is_null( self::$_instance ) ) {
+            self::$_instance = new self();
+        }
+        return self::$_instance;
+    }
 
-// Include the webhook handler base class.
-require_once plugin_dir_path( __FILE__ ) . 'includes/class-pcwt-webhook-handler.php';
+    private function __construct() {
+        add_action( 'plugins_loaded', array( $this, 'init' ) );
+    }
 
-// Include the Tutor LMS integration class.
-require_once plugin_dir_path( __FILE__ ) . 'includes/class-pcwt-tutor-lms.php';
+    public function init() {
+        $this->includes();
 
-// Include the WooCommerce integration class.
-require_once plugin_dir_path( __FILE__ ) . 'includes/class-pcwt-woocommerce.php';
+        new PCWT_Installer();
+        new PCWT_WordPress_Core();
 
-// Include the WordPress Core integration class.
-require_once plugin_dir_path( __FILE__ ) . 'includes/class-pcwt-wordpress-core.php';
+        if ( is_admin() ) {
+            new PCWT_Admin();
+        }
+
+        if ( $this->is_tutor_lms_active() ) {
+            new PCWT_Tutor_LMS();
+        }
+
+        if ( $this->is_woocommerce_active() ) {
+            new PCWT_WooCommerce();
+        }
+
+        add_action( 'admin_notices', array( $this, 'admin_notices' ) );
+    }
+
+    public function includes() {
+        require_once plugin_dir_path( __FILE__ ) . 'includes/class-pcwt-webhook-handler.php';
+        require_once plugin_dir_path( __FILE__ ) . 'includes/class-pcwt-installer.php';
+        require_once plugin_dir_path( __FILE__ ) . 'includes/class-pcwt-wordpress-core.php';
+
+        if ( is_admin() ) {
+            require_once plugin_dir_path( __FILE__ ) . 'admin/class-pcwt-log-list-table.php';
+            require_once plugin_dir_path( __FILE__ ) . 'admin/class-pcwt-admin.php';
+        }
+
+        if ( $this->is_tutor_lms_active() ) {
+            require_once plugin_dir_path( __FILE__ ) . 'includes/class-pcwt-tutor-lms.php';
+        }
+
+        if ( $this->is_woocommerce_active() ) {
+            require_once plugin_dir_path( __FILE__ ) . 'includes/class-pcwt-woocommerce.php';
+        }
+    }
+
+    public function admin_notices() {
+        if ( ! $this->is_tutor_lms_active() ) {
+            ?>
+            <div class="notice notice-error">
+                <p><?php _e( 'Pabbly Connect for Tutor LMS & WooCommerce requires <strong>Tutor LMS</strong> to be installed and active.', 'pcwt' ); ?></p>
+            </div>
+            <?php
+        }
+        if ( ! $this->is_woocommerce_active() ) {
+            ?>
+            <div class="notice notice-error">
+                <p><?php _e( 'Pabbly Connect for Tutor LMS & WooCommerce requires <strong>WooCommerce</strong> to be installed and active.', 'pcwt' ); ?></p>
+            </div>
+            <?php
+        }
+    }
+
+    public function is_tutor_lms_active() {
+        return class_exists( 'Tutor' );
+    }
+
+    public function is_woocommerce_active() {
+        return class_exists( 'WooCommerce' );
+    }
+}
+
+function pcwt_connector() {
+    return PCWT_Connector::instance();
+}
+
+// Kick it off.
+pcwt_connector();

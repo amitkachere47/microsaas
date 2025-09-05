@@ -12,8 +12,8 @@ class PCWT_Admin {
         if ( 'pabbly-connect_page_pabbly-connect-logs' !== $hook && 'toplevel_page_pabbly-connect-settings' !== $hook && 'pabbly-connect_page_pabbly-connect-settings' !== $hook) {
             return;
         }
-        wp_enqueue_style( 'pcwt-admin-css', plugin_dir_url( __FILE__ ) . 'css/admin.css', array(), '1.1.0' );
-        wp_enqueue_script( 'pcwt-admin-js', plugin_dir_url( __FILE__ ) . 'js/admin.js', array( 'jquery' ), '1.1.0', true );
+        wp_enqueue_style( 'pcwt-admin-css', plugin_dir_url( __FILE__ ) . 'css/admin.css', array(), '1.1.2' );
+        wp_enqueue_script( 'pcwt-admin-js', plugin_dir_url( __FILE__ ) . 'js/admin.js', array( 'jquery' ), '1.1.2', true );
     }
 
     public function add_plugin_page() {
@@ -22,6 +22,7 @@ class PCWT_Admin {
     }
 
     public function create_logs_page() {
+        require_once plugin_dir_path( __FILE__ ) . 'class-pcwt-log-list-table.php';
         $log_table = new PCWT_Log_List_Table();
         $log_table->prepare_items();
         ?>
@@ -51,7 +52,6 @@ class PCWT_Admin {
     public function page_init() {
         register_setting( 'pcwt_option_group', 'pcwt_webhook_url', array( $this, 'sanitize_webhook_url' ) );
         register_setting( 'pcwt_option_group', 'pcwt_active_webhooks', array( $this, 'sanitize_settings' ) );
-        register_setting( 'pcwt_option_group', 'pcwt_tutor_lms_courses' );
 
         add_settings_section( 'webhook_settings_section', 'Webhook Settings', null, 'pabbly-connect-settings' );
         add_settings_field( 'webhook_url', 'Pabbly Webhook URL', array( $this, 'webhook_url_callback' ), 'pabbly-connect-settings', 'webhook_settings_section' );
@@ -61,13 +61,18 @@ class PCWT_Admin {
         add_settings_field( 'publish_post', 'Post Published', array( $this, 'checkbox_callback' ), 'pabbly-connect-settings', 'wordpress_core_triggers', array( 'id' => 'publish_post' ) );
         add_settings_field( 'comment_post', 'Comment Posted', array( $this, 'checkbox_callback' ), 'pabbly-connect-settings', 'wordpress_core_triggers', array( 'id' => 'comment_post' ) );
 
-        add_settings_section( 'woocommerce_triggers', '<button type="button" class="button-link section-toggle">WooCommerce Triggers</button>', null, 'pabbly-connect-settings' );
-        add_settings_field( 'woocommerce_order_status_changed', 'Order Status Changed', array( $this, 'checkbox_callback' ), 'pabbly-connect-settings', 'woocommerce_triggers', array( 'id' => 'woocommerce_order_status_changed' ) );
-        add_settings_field( 'woocommerce_new_order', 'Order Created', array( $this, 'checkbox_callback' ), 'pabbly-connect-settings', 'woocommerce_triggers', array( 'id' => 'woocommerce_new_order' ) );
+        if ( pcwt_connector()->is_woocommerce_active() ) {
+            add_settings_section( 'woocommerce_triggers', '<button type="button" class="button-link section-toggle">WooCommerce Triggers</button>', null, 'pabbly-connect-settings' );
+            add_settings_field( 'woocommerce_order_status_changed', 'Order Status Changed', array( $this, 'checkbox_callback' ), 'pabbly-connect-settings', 'woocommerce_triggers', array( 'id' => 'woocommerce_order_status_changed' ) );
+            add_settings_field( 'woocommerce_new_order', 'Order Created', array( $this, 'checkbox_callback' ), 'pabbly-connect-settings', 'woocommerce_triggers', array( 'id' => 'woocommerce_new_order' ) );
+        }
 
-        add_settings_section( 'tutor_lms_triggers', '<button type="button" class="button-link section-toggle">Tutor LMS Triggers</button>', null, 'pabbly-connect-settings' );
-        add_settings_field( 'tutor_lms_courses', 'Filter by Course', array( $this, 'tutor_lms_courses_callback' ), 'pabbly-connect-settings', 'tutor_lms_triggers' );
-        add_settings_field( 'tutor_after_enroll', 'Student Enrolls in Course', array( $this, 'checkbox_callback' ), 'pabbly-connect-settings', 'tutor_lms_triggers', array( 'id' => 'tutor_after_enroll' ) );
+        if ( pcwt_connector()->is_tutor_lms_active() ) {
+            register_setting( 'pcwt_option_group', 'pcwt_tutor_lms_courses' );
+            add_settings_section( 'tutor_lms_triggers', '<button type="button" class="button-link section-toggle">Tutor LMS Triggers</button>', null, 'pabbly-connect-settings' );
+            add_settings_field( 'tutor_lms_courses', 'Filter by Course', array( $this, 'tutor_lms_courses_callback' ), 'pabbly-connect-settings', 'tutor_lms_triggers' );
+            add_settings_field( 'tutor_after_enroll', 'Student Enrolls in Course', array( $this, 'checkbox_callback' ), 'pabbly-connect-settings', 'tutor_lms_triggers', array( 'id' => 'tutor_after_enroll' ) );
+        }
     }
 
     public function sanitize_webhook_url( $input ) { return esc_url_raw( $input ); }

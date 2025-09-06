@@ -20,9 +20,12 @@ class PCWT_Tutor_LMS extends PCWT_Webhook_Handler {
 
     public function after_enroll( $course_id, $enrollment_id ) {
         if ( ! $this->is_course_webhook_enabled( $course_id ) ) return;
-        $user_id = get_current_user_id();
+
+        $enrollment = get_post( $enrollment_id );
+        $user_id = $enrollment->post_author;
         $user_info = get_userdata( $user_id );
         $course = get_post( $course_id );
+
         $this->trigger_webhook( 'tutor_after_enroll', array(
             'user_id' => $user_id, 'user_email' => $user_info->user_email,
             'course_id' => $course_id, 'course_title' => $course->post_title,

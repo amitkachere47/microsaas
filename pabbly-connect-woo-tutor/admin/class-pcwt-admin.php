@@ -12,8 +12,9 @@ class PCWT_Admin {
         if ( 'pabbly-connect_page_pabbly-connect-logs' !== $hook && 'toplevel_page_pabbly-connect-settings' !== $hook && 'pabbly-connect_page_pabbly-connect-settings' !== $hook) {
             return;
         }
-        wp_enqueue_style( 'pcwt-admin-css', plugin_dir_url( __FILE__ ) . 'css/admin.css', array(), '1.1.4' );
-        wp_enqueue_script( 'pcwt-admin-js', plugin_dir_url( __FILE__ ) . 'js/admin.js', array( 'jquery' ), '1.1.4', true );
+        wp_enqueue_style( 'pcwt-admin-css', plugin_dir_url( __FILE__ ) . 'css/admin.css', array(), '1.4.1' );
+        wp_enqueue_script( 'jquery-ui-sortable' );
+        wp_enqueue_script( 'pcwt-admin-js', plugin_dir_url( __FILE__ ) . 'js/admin.js', array( 'jquery', 'jquery-ui-sortable' ), '1.4.1', true );
     }
 
     public function add_plugin_page() {
@@ -47,35 +48,24 @@ class PCWT_Admin {
             </form>
         </div>
         <?php
+        $this->render_templates();
     }
 
     public function page_init() {
         register_setting( 'pcwt_option_group', 'pcwt_webhook_url', array( $this, 'sanitize_webhook_url' ) );
         register_setting( 'pcwt_option_group', 'pcwt_active_webhooks', array( $this, 'sanitize_settings' ) );
+        register_setting( 'pcwt_option_group', 'pcwt_webhook_conditions', array( $this, 'sanitize_conditions' ) );
 
         add_settings_section( 'webhook_settings_section', 'Webhook Settings', null, 'pabbly-connect-settings' );
         add_settings_field( 'webhook_url', 'Pabbly Webhook URL', array( $this, 'webhook_url_callback' ), 'pabbly-connect-settings', 'webhook_settings_section' );
 
-        add_settings_section( 'wordpress_core_triggers', '<button type="button" class="button-link section-toggle">WordPress Core Triggers</button>', null, 'pabbly-connect-settings' );
-        add_settings_field( 'user_register', 'User Registers', array( $this, 'checkbox_callback' ), 'pabbly-connect-settings', 'wordpress_core_triggers', array( 'id' => 'user_register' ) );
-        add_settings_field( 'publish_post', 'Post Published', array( $this, 'checkbox_callback' ), 'pabbly-connect-settings', 'wordpress_core_triggers', array( 'id' => 'publish_post' ) );
-        add_settings_field( 'comment_post', 'Comment Posted', array( $this, 'checkbox_callback' ), 'pabbly-connect-settings', 'wordpress_core_triggers', array( 'id' => 'comment_post' ) );
-
-        if ( pcwt_connector()->is_woocommerce_active() ) {
-            add_settings_section( 'woocommerce_triggers', '<button type="button" class="button-link section-toggle">WooCommerce Triggers</button>', null, 'pabbly-connect-settings' );
-            add_settings_field( 'woocommerce_order_status_changed', 'Order Status Changed', array( $this, 'checkbox_callback' ), 'pabbly-connect-settings', 'woocommerce_triggers', array( 'id' => 'woocommerce_order_status_changed' ) );
-            add_settings_field( 'woocommerce_new_order', 'Order Created', array( $this, 'checkbox_callback' ), 'pabbly-connect-settings', 'woocommerce_triggers', array( 'id' => 'woocommerce_new_order' ) );
-        }
-
-        if ( pcwt_connector()->is_tutor_lms_active() ) {
-            register_setting( 'pcwt_option_group', 'pcwt_tutor_lms_courses' );
-            add_settings_section( 'tutor_lms_triggers', '<button type="button" class="button-link section-toggle">Tutor LMS Triggers</button>', null, 'pabbly-connect-settings' );
-            add_settings_field( 'tutor_lms_courses', 'Filter by Course', array( $this, 'tutor_lms_courses_callback' ), 'pabbly-connect-settings', 'tutor_lms_triggers' );
-            add_settings_field( 'tutor_after_enroll', 'Student Enrolls in Course', array( $this, 'checkbox_callback' ), 'pabbly-connect-settings', 'tutor_lms_triggers', array( 'id' => 'tutor_after_enroll' ) );
-            add_settings_field( 'tutor_lesson_completed', 'Lesson Completed', array( $this, 'checkbox_callback' ), 'pabbly-connect-settings', 'tutor_lms_triggers', array( 'id' => 'tutor_lesson_completed' ) );
-            add_settings_field( 'tutor_quiz_passed', 'Quiz Passed', array( $this, 'checkbox_callback' ), 'pabbly-connect-settings', 'tutor_lms_triggers', array( 'id' => 'tutor_quiz_passed' ) );
-            add_settings_field( 'tutor_assignment_submitted', 'Assignment Submitted', array( $this, 'checkbox_callback' ), 'pabbly-connect-settings', 'tutor_lms_triggers', array( 'id' => 'tutor_assignment_submitted' ) );
-            add_settings_field( 'tutor_question_posted', 'Question Posted', array( $this, 'checkbox_callback' ), 'pabbly-connect-settings', 'tutor_lms_triggers', array( 'id' => 'tutor_question_posted' ) );
+        $triggers = PCWT_Trigger_Manager::get_triggers();
+        foreach ( $triggers as $group => $group_triggers ) {
+            $section_id = sanitize_key($group) . '_triggers';
+            add_settings_section( $section_id, '<button type="button" class="button-link section-toggle">' . $group . ' Triggers</button>', null, 'pabbly-connect-settings' );
+            foreach ( $group_triggers as $trigger_id => $trigger_label ) {
+                add_settings_field( $trigger_id, $trigger_label, array( $this, 'checkbox_callback' ), 'pabbly-connect-settings', $section_id, array( 'id' => $trigger_id ) );
+            }
         }
     }
 
@@ -84,7 +74,41 @@ class PCWT_Admin {
         $output = array();
         if ( is_array( $input ) ) {
             foreach ( $input as $key => $value ) {
-                $output[ sanitize_key( $key ) ] = is_array( $value ) ? array_map( 'intval', $value ) : intval( $value );
+                $output[ sanitize_key( $key ) ] = intval( $value );
+            }
+        }
+        return $output;
+    }
+    public function sanitize_conditions( $input ) {
+        $output = array();
+        if ( ! is_array( $input ) ) {
+            return $output;
+        }
+        foreach ( $input as $trigger => $conditions ) {
+            $output[ sanitize_key( $trigger ) ] = $this->sanitize_condition_group( $conditions );
+        }
+        return $output;
+    }
+
+    private function sanitize_condition_group( $group ) {
+        $output = array();
+        if ( ! is_array( $group ) ) {
+            return $output;
+        }
+        if ( isset( $group['logic'] ) ) {
+            $output['logic'] = sanitize_text_field( $group['logic'] );
+        }
+        if ( isset( $group['conditions'] ) && is_array( $group['conditions'] ) ) {
+            foreach ( $group['conditions'] as $item ) {
+                if ( isset( $item['conditions'] ) ) {
+                    $output['conditions'][] = $this->sanitize_condition_group( $item );
+                } else {
+                    $output['conditions'][] = array(
+                        'field'    => sanitize_text_field( $item['field'] ),
+                        'operator' => sanitize_text_field( $item['operator'] ),
+                        'value'    => sanitize_text_field( $item['value'] ),
+                    );
+                }
             }
         }
         return $output;
@@ -97,22 +121,85 @@ class PCWT_Admin {
 
     public function checkbox_callback( $args ) {
         $options = get_option( 'pcwt_active_webhooks' );
+        $conditions = get_option( 'pcwt_webhook_conditions' );
         $id = $args['id'];
         $checked = isset( $options[$id] ) && $options[$id] == 1 ? 'checked' : '';
-        echo "<input type='checkbox' id='$id' name='pcwt_active_webhooks[$id]' value='1' $checked />";
+
+        echo "<input type='checkbox' id='$id' name='pcwt_active_webhooks[$id]' value='1' $checked class='webhook-checkbox' />";
+
+        echo "<div class='conditions-wrapper' style='" . ( $checked ? '' : 'display:none;' ) . "'>";
+        echo "<h4>Conditions</h4>";
+
+        $trigger_conditions = isset( $conditions[$id] ) ? $conditions[$id] : array();
+        $this->render_condition_group( $id, $trigger_conditions, "pcwt_webhook_conditions[$id]" );
+
+        echo "</div>";
     }
 
-    public function tutor_lms_courses_callback() {
-        $courses = get_posts( array( 'post_type' => 'courses', 'numberposts' => -1 ) );
-        $selected_courses = get_option( 'pcwt_tutor_lms_courses', array() );
-        echo '<select id="tutor_lms_courses" name="pcwt_tutor_lms_courses[]" multiple="multiple" style="width:100%;">';
-        echo '<option value="all" ' . selected( in_array( 'all', $selected_courses ), true, false ) . '>All Courses</option>';
-        if( !empty( $courses ) ) {
-            foreach ( $courses as $course ) {
-                echo '<option value="' . esc_attr( $course->ID ) . '" ' . selected( in_array( $course->ID, $selected_courses ), true, false ) . '>' . esc_html( $course->post_title ) . '</option>';
+    private function render_condition_group( $trigger, $group, $path ) {
+        $logic = isset( $group['logic'] ) ? $group['logic'] : 'and';
+        $conditions = isset( $group['conditions'] ) ? $group['conditions'] : array();
+
+        echo "<div class='condition-group'>";
+        echo "<div class='group-logic'><select name='{$path}[logic]'>";
+        echo "<option value='and' " . selected( $logic, 'and', false ) . ">AND</option>";
+        echo "<option value='or' " . selected( $logic, 'or', false ) . ">OR</option>";
+        echo "</select></div>";
+
+        echo "<div class='conditions-list'>";
+        if ( ! empty( $conditions ) ) {
+            foreach ( $conditions as $index => $item ) {
+                $item_path = "{$path}[conditions][{$index}]";
+                if ( isset( $item['conditions'] ) ) {
+                    $this->render_condition_group( $trigger, $item, $item_path );
+                } else {
+                    $this->render_condition_row( $trigger, $item, $item_path );
+                }
             }
         }
-        echo '</select>';
+        echo "</div>";
+
+        echo "<div class='group-actions'>";
+        echo "<button type='button' class='button add-condition' data-trigger='$trigger'>Add Condition</button>";
+        echo "<button type='button' class='button add-group' data-trigger='$trigger'>Add Group</button>";
+        echo "<button type='button' class='button remove-group'>Remove Group</button>";
+        echo "</div></div>";
+    }
+
+    private function render_condition_row( $trigger, $condition, $path ) {
+        $field = isset( $condition['field'] ) ? $condition['field'] : '';
+        $operator = isset( $condition['operator'] ) ? $condition['operator'] : '';
+        $value = isset( $condition['value'] ) ? $condition['value'] : '';
+
+        echo "<div class='condition-row'>";
+        echo "<select name='{$path}[field]'>";
+        foreach ( PCWT_Trigger_Manager::get_trigger_fields( $trigger ) as $field_key => $field_label ) {
+            echo "<option value='$field_key' " . selected( $field, $field_key, false ) . ">$field_label</option>";
+        }
+        echo "</select>";
+        echo "<select name='{$path}[operator]'>";
+        foreach ( $this->get_operators() as $op_key => $op_label ) {
+            echo "<option value='$op_key' " . selected( $operator, $op_key, false ) . ">$op_label</option>";
+        }
+        echo "</select>";
+        echo "<input type='text' name='{$path}[value]' value='" . esc_attr( $value ) . "' />";
+        echo "<button type='button' class='button remove-condition'>Remove</button>";
+        echo "</div>";
+    }
+
+    private function get_operators() {
+        return array( 'is' => 'Is', 'is_not' => 'Is Not', 'contains' => 'Contains', 'does_not_contain' => 'Does Not Contain' );
+    }
+
+    private function render_templates() {
+        ?>
+        <div id="condition-row-template" style="display: none;">
+            <?php $this->render_condition_row( '{{trigger}}', array(), '{{path}}' ); ?>
+        </div>
+        <div id="condition-group-template" style="display: none;">
+            <?php $this->render_condition_group( '{{trigger}}', array(), '{{path}}' ); ?>
+        </div>
+        <?php
     }
 }
 

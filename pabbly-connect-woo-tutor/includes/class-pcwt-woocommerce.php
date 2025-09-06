@@ -6,7 +6,6 @@ class PCWT_WooCommerce extends PCWT_Webhook_Handler {
         add_action( 'woocommerce_order_status_changed', array( $this, 'order_status_changed' ), 10, 4 );
         add_action( 'woocommerce_new_order', array( $this, 'new_order' ), 10, 1 );
         add_action( 'save_post_product', array( $this, 'new_product' ), 10, 3 );
-        add_action( 'user_register', array( $this, 'new_customer' ), 10, 1 );
         add_action( 'woocommerce_add_to_cart', array( $this, 'add_to_cart' ), 10, 6 );
     }
 
@@ -43,17 +42,6 @@ class PCWT_WooCommerce extends PCWT_Webhook_Handler {
             'sku'        => $product->get_sku(),
             'price'      => $product->get_price(),
         ) );
-    }
-
-    public function new_customer( $user_id ) {
-        $user = get_userdata( $user_id );
-        if ( in_array( 'customer', (array) $user->roles ) ) {
-            $this->trigger_webhook( 'woocommerce_new_customer', array(
-                'user_id'    => $user_id,
-                'user_email' => $user->user_email,
-                'user_name'  => $user->display_name,
-            ) );
-        }
     }
 
     public function add_to_cart( $cart_item_key, $product_id, $quantity, $variation_id, $variation, $cart_item_data ) {

@@ -56,6 +56,7 @@ final class PCWT_Connector {
 
     public function includes() {
         require_once plugin_dir_path( __FILE__ ) . 'includes/class-pcwt-webhook-handler.php';
+        require_once plugin_dir_path( __FILE__ ) . 'includes/class-pcwt-trigger-manager.php';
         require_once plugin_dir_path( __FILE__ ) . 'includes/class-pcwt-installer.php';
         require_once plugin_dir_path( __FILE__ ) . 'includes/class-pcwt-wordpress-core.php';
 

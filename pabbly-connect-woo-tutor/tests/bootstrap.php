@@ -7,6 +7,7 @@ define( 'PLUGIN_ROOT', dirname( __DIR__ ) . '/' );
 
 $mock_options = array();
 $mock_actions = array();
+$mock_post = null;
 
 if ( ! class_exists( 'WP_List_Table' ) ) {
     class WP_List_Table {
@@ -73,6 +74,10 @@ function get_userdata( $user_id ) {
     return $user;
 }
 function get_post( $post_id ) {
+    global $mock_post;
+    if ( isset( $mock_post ) ) {
+        return $mock_post;
+    }
     $post = new stdClass();
     $post->post_title = 'Test Post';
     $post->post_author = 1;
@@ -81,10 +86,10 @@ function get_post( $post_id ) {
 }
 function current_time( $type ) { return date( 'Y-m-d H:i:s' ); }
 function wp_remote_post( $url, $args ) {
-    // echo "--- Webhook Sent ---\n";
-    // echo "URL: $url\n";
-    // echo "Data: " . $args['body'] . "\n";
-    // echo "--------------------\n";
+    echo "--- Webhook Sent ---\n";
+    echo "URL: $url\n";
+    echo "Data: " . $args['body'] . "\n";
+    echo "--------------------\n";
     return array('response' => array('code' => 200), 'body' => 'Success');
 }
 function wc_get_order( $order_id ) { return new WC_Order(); }
